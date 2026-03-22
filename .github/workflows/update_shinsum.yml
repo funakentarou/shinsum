@@ -2,28 +2,33 @@ name: シンsum理論 自動更新
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 毎日日本時間9時
-  workflow_dispatch:  # 手動実行も可能
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Python設定
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      
+
       - name: ライブラリインストール
-        run: pip install pandas selenium openpyxl
-      
+        run: pip install pandas selenium openpyxl webdriver-manager
+
+      - name: Chromeインストール
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: データ取得・HTML生成
         run: |
           python3 auto_scraper.py
           python3 shinsum_fixed.py
-      
+
       - name: GitHubにアップロード
         run: |
           git config user.name "GitHub Actions"
