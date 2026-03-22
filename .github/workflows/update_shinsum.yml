@@ -2,7 +2,9 @@ name: シンsum理論 自動更新
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '20 23 * * *'   # 日本時間8:20 最初の実行
+    - cron: '*/5 23 * * *'  # 日本時間8:05以降5分おき
+    - cron: '*/5 0-12 * * *' # 日本時間9時〜21時 5分おき
   workflow_dispatch:
 
 jobs:
@@ -34,5 +36,5 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add index.html
-          git commit -m "シンsumデータ更新 $(date '+%Y-%m-%d')" || echo "変更なし"
+          git commit -m "シンsumデータ更新 $(date '+%Y-%m-%d %H:%M')" || echo "変更なし"
           git push
