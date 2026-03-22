@@ -17,7 +17,7 @@ jobs:
           python-version: '3.10'
 
       - name: ライブラリインストール
-        run: pip install pandas selenium openpyxl webdriver-manager
+        run: pip install pandas selenium openpyxl webdriver-manager beautifulsoup4 requests
 
       - name: Chromeインストール
         run: |
