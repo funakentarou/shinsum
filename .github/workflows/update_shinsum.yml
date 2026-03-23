@@ -2,11 +2,10 @@ name: シンsum理論 自動更新
 
 on:
   schedule:
-    - cron: '20 23 * * *'    # 日本時間8:20 最初の実行
-    - cron: '*/5 23 * * *'   # 日本時間8時台 5分おき
-    - cron: '*/5 0-13 * * *' # 日本時間9時〜22時 5分おき
-    - cron: '*/5 13 * * *'   # 日本時間22時台 5分おき
-    - cron: '40,45 13 * * *' # 日本時間22:40、22:45
+    - cron: '20 23 * * *'
+    - cron: '*/5 23 * * *'
+    - cron: '*/5 0-13 * * *'
+    - cron: '40,45 13 * * *'
   workflow_dispatch:
 
 jobs:
@@ -32,6 +31,7 @@ jobs:
         run: |
           python3 auto_scraper.py
           python3 shinsum_fixed.py
+          cp shinsum_complete.html index.html
 
       - name: GitHubにアップロード
         run: |
