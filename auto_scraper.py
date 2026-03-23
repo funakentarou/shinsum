@@ -70,12 +70,11 @@ class FullAutoScraper:
             venues = []
             elements = soup.find_all(['div', 'span', 'a', 'p'])
             
-            for element in elements:
-                text = element.get_text(strip=True)
-                if text in venue_name_to_no:
-                    venue_no = venue_name_to_no[text]
-                    if venue_no not in venues:
-                        venues.append(venue_no)
+            full_text = soup.get_text()
+            for name, no in venue_name_to_no.items():
+                if name in full_text:
+                    if no not in venues:
+                        venues.append(no)
             
             venues.sort()
             
@@ -99,13 +98,13 @@ class FullAutoScraper:
         
         try:
             self.driver.get(url)
-            time.sleep(3)
+            time.sleep(5)
             
             # 「直前情報」タブをクリック
             try:
                 chokuzen_tab = self.driver.find_element(By.XPATH, "//button[contains(text(), '直前情報')] | //a[contains(text(), '直前情報')]")
                 self.driver.execute_script("arguments[0].click();", chokuzen_tab)
-                time.sleep(2)
+                time.sleep(3)
             except:
                 pass
             
@@ -113,7 +112,7 @@ class FullAutoScraper:
             try:
                 original_tab = self.driver.find_element(By.XPATH, "//button[contains(text(), 'オリジナル展示データ')] | //a[contains(text(), 'オリジナル展示データ')]")
                 self.driver.execute_script("arguments[0].click();", original_tab)
-                time.sleep(2)
+                time.sleep(3)
             except:
                 pass
             
@@ -134,44 +133,69 @@ class FullAutoScraper:
         for table in tables:
             table_text = table.get_text()
             
-            if '展示タイム' in table_text or 'まわり足' in table_text or '直　線' in table_text:
-                rows = table.find_all('tr')
+            if '展示タイム' not in table_text:
+                continue
+            
+            # ヘッダー行から列インデックスを特定
+            headers = []
+            header_row = table.find('tr')
+            if header_row:
+                headers = [th.get_text(strip=True) for th in header_row.find_all(['th','td'])]
+            
+            # 列インデックスを特定
+            exhibition_idx = None
+            one_lap_idx = None
+            turning_idx = None
+            straight_idx = None
+            
+            for i, h in enumerate(headers):
+                if '展示タイム' in h or '展示' in h:
+                    exhibition_idx = i
+                elif '一' in h and '周' in h or '一周' in h:
+                    one_lap_idx = i
+                elif 'まわり足' in h or '周り足' in h:
+                    turning_idx = i
+                elif '直線' in h or '直　線' in h:
+                    straight_idx = i
+            
+            rows = table.find_all('tr')
+            for row in rows:
+                cells = row.find_all(['td','th'])
+                if len(cells) < 3:
+                    continue
                 
-                for row in rows:
-                    cells = row.find_all(['td', 'th'])
-                    
-                    if len(cells) < 5:
-                        continue
-                    
-                    cell_texts = [c.get_text(strip=True) for c in cells]
-                    
-                    boat_number = None
-                    for text in cell_texts:
-                        if text in ['1', '2', '3', '4', '5', '6']:
-                            boat_number = int(text)
-                            break
-                    
-                    if not boat_number:
-                        continue
-                    
-                    times = []
-                    for text in cell_texts:
-                        matches = re.findall(r'\d+\.\d+', text)
-                        times.extend(matches)
-                    
-                    if boat_number and len(times) >= 6:
-                        if any(b['number'] == boat_number for b in boats):
-                            continue
-                        
-                        boat = {
-                            'number': boat_number,
-                            'exhibition': times[2] if len(times) > 2 else None,
-                            'one_lap': times[3] if len(times) > 3 else None,
-                            'turning': times[4] if len(times) > 4 else None,
-                            'straight': times[5] if len(times) > 5 else None
-                        }
-                        
-                        boats.append(boat)
+                cell_texts = [c.get_text(strip=True) for c in cells]
+                
+                # 艇番を取得
+                boat_number = None
+                if cell_texts and cell_texts[0] in ['1','2','3','4','5','6']:
+                    boat_number = int(cell_texts[0])
+                
+                if not boat_number:
+                    continue
+                
+                if any(b['number'] == boat_number for b in boats):
+                    continue
+                
+                # タイムを取得
+                def get_val(idx):
+                    if idx is not None and idx < len(cell_texts):
+                        return cell_texts[idx]
+                    return None
+                
+                exhibition = get_val(exhibition_idx)
+                one_lap = get_val(one_lap_idx)
+                turning = get_val(turning_idx)
+                straight = get_val(straight_idx)
+                
+                if exhibition and one_lap:
+                    boats.append({
+                        'number': boat_number,
+                        'exhibition': exhibition,
+                        'one_lap': one_lap,
+                        'turning': turning,
+                        'straight': straight
+                    })
         
         boats.sort(key=lambda x: x['number'])
         return boats
@@ -185,17 +209,38 @@ class FullAutoScraper:
         print('='*60)
         
         # まず1Rをチェック（開催確認）
-        print(f'  📊 1R 取得中...', end=' ')
-        boats_1r = self.get_race_data(venue_no, 1, date)
-        
-        if not boats_1r:
-            print('⚠️ データなし（開催していない可能性）')
-            return []
-        
-        # 1Rのデータがある = 開催中
-        print(f'✅ 開催確認')
-        
         all_data = []
+        
+        # 1Rが既に取得済みかチェック
+        if existing_df is not None:
+            r1_exists = ((existing_df['venue_no'] == venue_no) & 
+                        (existing_df['race_no'] == 1)).any()
+            if r1_exists:
+                print(f'  📊 1R 取得中... ⏭️ スキップ（取得済み）')
+            else:
+                print(f'  📊 1R 取得中...', end=' ')
+                boats_1r = self.get_race_data(venue_no, 1, date)
+                if not boats_1r:
+                    print('⚠️ データなし（開催していない可能性）')
+                    return []
+                print(f'✅ 開催確認')
+                for boat in boats_1r:
+                    boat['venue_no'] = venue_no
+                    boat['venue_name'] = venue_name
+                    boat['race_no'] = 1
+                    all_data.append(boat)
+        else:
+            print(f'  📊 1R 取得中...', end=' ')
+            boats_1r = self.get_race_data(venue_no, 1, date)
+            if not boats_1r:
+                print('⚠️ データなし（開催していない可能性）')
+                return []
+            print(f'✅ 開催確認')
+            for boat in boats_1r:
+                boat['venue_no'] = venue_no
+                boat['venue_name'] = venue_name
+                boat['race_no'] = 1
+                all_data.append(boat)
         
         # 2Rから順番にチェック
         for race_no in range(2, 13):
@@ -220,8 +265,7 @@ class FullAutoScraper:
                     boat['race_no'] = race_no
                     all_data.append(boat)
                 
-                print(f'  💡 新しいデータを取得したため、この会場は終了します')
-                break
+                pass
             else:
                 print('⚠️ データなし（この会場は終了）')
                 break
