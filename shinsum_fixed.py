@@ -204,7 +204,10 @@ def get_rate(table, boat, diff):
 def calc(df, pat, tbl):
     res = []
     for _, b in df.iterrows():
-        ex, ol = float(b['exhibition']), float(b['one_lap'])
+        try:
+                ex, ol = float(b['exhibition']), float(b['one_lap'])
+            except (ValueError, TypeError):
+                continue
         th = float(b['turning'] if pat=='A' else b['straight'])
         lbl = '周り足' if pat=='A' else '直線'
         res.append({'number':int(b['number']),'exhibition':ex,'one_lap':ol,'third':th,'third_label':lbl,'shinsum':ex+ol+th})
