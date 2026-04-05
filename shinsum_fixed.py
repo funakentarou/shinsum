@@ -211,6 +211,7 @@ def calc(df, pat, tbl):
         th = float(b['turning'] if pat=='A' else b['straight'])
         lbl = '周り足' if pat=='A' else '直線'
         res.append({'number':int(b['number']),'exhibition':ex,'one_lap':ol,'third':th,'third_label':lbl,'shinsum':ex+ol+th})
+    if not res: return []
     avg = sum(r['shinsum'] for r in res)/len(res)
     for r in res:
         r['diff'] = avg - r['shinsum']  # 表示用（速い方がプラス）
