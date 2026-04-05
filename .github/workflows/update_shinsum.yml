@@ -35,6 +35,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add index.html
+          git add index.html all_races_*.csv
           git commit -m "シンsumデータ更新 $(date '+%Y-%m-%d %H:%M')" || echo "変更なし"
           git push
