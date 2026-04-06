@@ -9,8 +9,13 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    concurrency:
+      group: update-shinsum
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Python設定
         uses: actions/setup-python@v4
@@ -35,7 +40,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          git pull origin main --no-edit
           git add index.html all_races_*.csv
           git commit -m "シンsumデータ更新 $(date '+%Y-%m-%d %H:%M')" || echo "変更なし"
-          git pull origin main --no-edit || true
           git push origin main
