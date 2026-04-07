@@ -149,7 +149,7 @@ class FullAutoScraper:
             straight_idx = None
             
             for i, h in enumerate(headers):
-                if '展示タイム' in h or '展示' in h:
+                if '展示タイム' in h:
                     exhibition_idx = i
                 elif '一' in h and '周' in h or '一周' in h:
                     one_lap_idx = i
